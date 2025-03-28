@@ -1,37 +1,45 @@
 pipeline {
     agent any
+    environment {
+        PYTHON = 'python'  // Pour Windows
+        REPO_URL = 'https://github.com/NamAngeM/python-jenkins.git'
+        BRANCH = 'main'  // Branche principale correcte
+    }
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/NamAngeM/python-jenkins.git'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "${BRANCH}"]],  // Utilise la variable BRANCH
+                    extensions: [],
+                    userRemoteConfigs: [[
+                        url: "${REPO_URL}",
+                        credentialsId: ''  // Laissez vide pour dépôt public
+                    ]]
+                ])
             }
         }
+
         stage('Setup') {
             steps {
-                bat 'python --version' // Vérifier que Python est installé
+                bat """  // Utilisez 'bat' au lieu de 'sh' pour Windows
+                ${PYTHON} -m pip install --upgrade pip
+                pip install pytest pytest-html
+                """
             }
         }
+
         stage('Test') {
             steps {
-                bat 'python -m unittest discover tests/' // Exécuter les tests unitaires
+                bat """
+                ${PYTHON} -m pytest src/tests/test_calculator.py --junitxml=test-results.xml -v
+                """
             }
-        }
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    docker.build("mon-image:${env.BUILD_ID}")
+            post {
+                always {
+                    junit 'test-results.xml'
                 }
             }
-        }
-        stage('Deploy') {
-            steps {
-                bat 'echo Déploiement terminé'
-            }
-        }
-    }
-    post {
-        failure {
-            echo 'Build échoué - Voir les rapports de test'
         }
     }
 }
