@@ -1,0 +1,20 @@
+# Pour un projet Python/Docker/Jenkins
+echo "__pycache__/
+*.pyc
+.venv/
+env/
+*.log
+*.tmp
+.DS_Store
+.vscode/
+.idea/
+*.swp
+dist/
+build/
+*.egg-info/
+.coverage
+htmlcov/
+.pytest_cache/
+docker-compose.yml.override
+.env
+*.env" > .gitignore
