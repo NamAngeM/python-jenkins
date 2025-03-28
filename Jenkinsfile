@@ -22,7 +22,7 @@ pipeline {
 
         stage('Setup') {
             steps {
-                bat """  // Utilisez 'bat' au lieu de 'sh' pour Windows
+                sh """  // Utilisez 'bat' au lieu de 'sh' pour Windows
                 ${PYTHON} -m pip install --upgrade pip
                 pip install pytest pytest-html
                 """
@@ -31,7 +31,7 @@ pipeline {
 
         stage('Test') {
             steps {
-                bat """
+                sh """
                 ${PYTHON} -m pytest src/tests/test_calculator.py --junitxml=test-results.xml -v
                 """
             }
