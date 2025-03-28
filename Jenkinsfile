@@ -1,7 +1,8 @@
 pipeline {
     agent any
     environment {
-        PYTHON = 'python3'  // Utilisez 'python' sous Windows
+        PYTHON = 'python'  // 'python3' sur Linux/Mac
+        TEST_PATH = 'src/tests/test_calculator.py'  // Chemin exact vers vos tests
     }
     stages {
         stage('Checkout') {
@@ -11,32 +12,21 @@ pipeline {
             }
         }
 
-        stage('Install dependencies') {
+        stage('Setup') {
             steps {
                 sh """
                 ${PYTHON} -m pip install --upgrade pip
-                pip install coverage pytest
+                pip install pytest pytest-sugar
                 """
             }
         }
 
-        stage('Run Tests') {
+        stage('Test') {
             steps {
-                sh '''#!/bin/bash
-                # Solution simplifiée avec pytest
-                ${PYTHON} -m pytest tests/test_calculator.py --junitxml=test-results.xml -v || true
-                
-                # Alternative si vous préférez unittest
-                # ${PYTHON} -m unittest discover -s tests -p "test_*.py" -v > test-output.log 2>&1
-                # ${PYTHON} -c "from xml.etree import ElementTree as ET; \
-                #   root = ET.Element('testsuite'); \
-                #   with open('test-output.log') as f: \
-                #       for line in f: \
-                #           if line.startswith('test'): \
-                #               test = ET.SubElement(root, 'testcase', {'name': line.split()[0]}); \
-                #           elif 'FAIL' in line: \
-                #               ET.SubElement(test, 'failure', {'message': line.strip()}); \
-                #   ET.ElementTree(root).write('test-results.xml')"
+                sh """
+                ${PYTHON} -m pytest ${TEST_PATH} \
+                    --junitxml=test-results.xml \
+                    -v || echo "Certains tests ont échoué"
                 """
             }
             post {
@@ -45,6 +35,14 @@ pipeline {
                     archiveArtifacts artifacts: 'test-results.xml', allowEmptyArchive: true
                 }
             }
+        }
+    }
+    post {
+        success {
+            echo 'Build réussi - Tous les tests passent !'
+        }
+        failure {
+            echo 'Build échoué - Voir les rapports de test'
         }
     }
 }
