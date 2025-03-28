@@ -1,73 +1,49 @@
 pipeline {
     agent any
     environment {
-        // Configuration Docker - À PERSONNALISER
-        DOCKER_IMAGE_NAME = 'python-jenkins-app'  // Nom de votre application
-        DOCKER_REGISTRY = 'registry.hub.docker.com'
-        // Le username est maintenant dans les credentials Jenkins
+        PYTHON = 'python3'  // Ou 'python' selon votre système
     }
-
     stages {
-        // Étape 1 - Récupération du code
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/NamAngeM/python-jenkins.git',
-                    branch: 'main'
+                git branch: 'main',
+                    url: 'https://github.com/NamAngeM/python-jenkins.git'
             }
         }
 
-        // Étape 2 - Installation et tests
-        stage('Test') {
+        stage('Install dependencies') {
             steps {
-                sh '''
-                python -m pip install --upgrade pip
-                pip install -r requirements.txt
-                pytest tests/ --junitxml=test-results.xml
-                '''
+                sh """
+                ${PYTHON} -m pip install --upgrade pip
+                pip install coverage
+                """
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh """
+                # Génère le rapport XML pour Jenkins
+                ${PYTHON} -m unittest discover -s tests -p "test_*.py" -v 2>&1 | tee test-output.log
+                
+                # Convertit la sortie en format JUnit XML
+                echo '<?xml version="1.0" encoding="UTF-8"?>' > test-results.xml
+                echo '<testsuite>' >> test-results.xml
+                grep -E '^(test|ok|FAILED)' test-output.log | sed -E 's/^test_(.*) \(__main__\.(.*)\)/\1/' | awk '
+                    /^ok/ { printf "<testcase classname=\"%s\" name=\"%s\"/>\n", $2, $3 }
+                    /^FAIL/ { printf "<testcase classname=\"%s\" name=\"%s\"><failure message=\"%s\"/></testcase>\n", $3, $4, $0 }
+                ' >> test-results.xml
+                echo '</testsuite>' >> test-results.xml
+                
+                # Affiche le résultat pour debug
+                cat test-results.xml
+                """
             }
             post {
                 always {
                     junit 'test-results.xml'
+                    archiveArtifacts artifacts: 'test-results.xml', allowEmptyArchive: true
                 }
-            }
-        }
-
-        // Étape 3 - Build Docker
-        stage('Build') {
-            when { 
-                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') } 
-            }
-            steps {
-                script {
-                    docker.build("${DOCKER_IMAGE_NAME}:${env.BUILD_ID}")
-                }
-            }
-        }
-
-        // Étape 4 - Push vers Docker Hub
-        stage('Push') {
-            when { 
-                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') } 
-            }
-            steps {
-                script {
-                    docker.withRegistry("https://${DOCKER_REGISTRY}", 'docker-hub-creds') {
-                        // Format: angenam/python-jenkins-app:123
-                        docker.image("${DOCKER_IMAGE_NAME}:${env.BUILD_ID}").push()
-                        // Tag 'latest' optionnel
-                        docker.image("${DOCKER_IMAGE_NAME}:${env.BUILD_ID}").push('latest')
-                    }
-                }
-            }
-        }
-    }
-
-    post {
-        always {
-            cleanWs()
-            script {
-                currentBuild.description = 
-                    "Image: angenam/${DOCKER_IMAGE_NAME}:${env.BUILD_ID}"
             }
         }
     }
