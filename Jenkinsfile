@@ -1,46 +1,35 @@
 pipeline {
     agent any
-    environment {
-        PYTHON = 'python'  // 'python3' sur Linux/Mac
-        TEST_PATH = 'src/tests/test_calculator.py'  // Chemin exact vers vos tests
-    }
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/NamAngeM/python-jenkins.git'
+                git 'https://github.com/NamAngeM/python-jenkins.git'
             }
         }
-
         stage('Setup') {
             steps {
-                bat """
-                ${PYTHON} -m pip install --upgrade pip
-                pip install pytest pytest-sugar
-                """
+                bat 'python --version' // Vérifier que Python est installé
             }
         }
-
         stage('Test') {
             steps {
-                bat """
-                ${PYTHON} -m pytest ${TEST_PATH} \
-                    --junitxml=test-results.xml \
-                    -v || echo "Certains tests ont échoué"
-                """
+                bat 'python -m unittest discover tests/' // Exécuter les tests unitaires
             }
-            post {
-                always {
-                    junit 'test-results.xml'
-                    archiveArtifacts artifacts: 'test-results.xml', allowEmptyArchive: true
+        }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    docker.build("mon-image:${env.BUILD_ID}")
                 }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                bat 'echo Déploiement terminé'
             }
         }
     }
     post {
-        success {
-            echo 'Build réussi - Tous les tests passent !'
-        }
         failure {
             echo 'Build échoué - Voir les rapports de test'
         }
