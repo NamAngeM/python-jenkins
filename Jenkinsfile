@@ -10,7 +10,7 @@ pipeline {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: "${BRANCH}"]],  // Utilise la variable BRANCH
+                    branches: [[name: "${BRANCH}"]],  // Utilisation de la variable BRANCH
                     extensions: [],
                     userRemoteConfigs: [[
                         url: "${REPO_URL}",
@@ -22,18 +22,18 @@ pipeline {
 
         stage('Setup') {
             steps {
-                sh """  // Utilisez 'bat' au lieu de 'sh' pour Windows
-                ${PYTHON} -m pip install --upgrade pip
-                pip install pytest pytest-html
-                """
+                bat '''
+                python -m pip install --upgrade pip
+                python -m pip install pytest pytest-html
+                '''
             }
         }
 
         stage('Test') {
             steps {
-                sh """
-                ${PYTHON} -m pytest src/tests/test_calculator.py --junitxml=test-results.xml -v
-                """
+                bat '''
+                python -m pytest src/tests/test_calculator.py --junitxml=test-results.xml -v
+                '''
             }
             post {
                 always {
