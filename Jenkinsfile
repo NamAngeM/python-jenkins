@@ -14,7 +14,7 @@ pipeline {
 
         stage('Setup') {
             steps {
-                sh """
+                bat """
                 ${PYTHON} -m pip install --upgrade pip
                 pip install pytest pytest-sugar
                 """
@@ -23,7 +23,7 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh """
+                bat """
                 ${PYTHON} -m pytest ${TEST_PATH} \
                     --junitxml=test-results.xml \
                     -v || echo "Certains tests ont échoué"
